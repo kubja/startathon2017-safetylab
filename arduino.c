@@ -6,6 +6,8 @@ Team Safety Lab for PPE enforcement
 #include <SPI.h>
 #include <MFRC522.h>
 
+
+// RFID reader config
 #define SS_PIN 10
 #define RST_PIN 9
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance.
@@ -102,6 +104,7 @@ bool validateRFID() {
   }
 
 }
+
 
 void turnOnLight() {
   digitalWrite(8, HIGH);    // set the LED off
