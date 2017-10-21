@@ -51,7 +51,7 @@ void setup() {
 @brief check if all clips are properly closed
 */
 bool isClipClosed() {
-
+  //TODO check the switch from a clip
   return true;
 }
 
@@ -86,6 +86,10 @@ bool getID() {
 }
 
 
+void sendRFID() {
+  //TODO
+}
+
 /*
 @brief validates RFID chip
 @return true if correct
@@ -94,8 +98,10 @@ bool validateRFID() {
   // Look for new cards
   if( !getID()) return false;
 
+  //TODO write procedure to check that RFID is known
   if(storedCard[0] == readCard[0] && storedCard[1] == readCard[1] && storedCard[2] == readCard[2] && storedCard[3] == readCard[3]) {
     Serial.println("Correct Value."); 
+    //TODO sendRFID();
     return true;
   }
   else {
