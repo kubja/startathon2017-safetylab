@@ -20,8 +20,9 @@ MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance.
 int state = STATE_OPENED;
 int previous_state = -1;
 
+#define NUM_STORED_CARDS 1
 
-byte storedCard[4];   // Stores an ID read from EEPROM
+byte storedCard[NUM_STORED_CARDS][4];   // Stores an ID read from EEPROM
 byte readCard[4];   // Stores scanned ID read from RFID Module
 byte masterCard[4];   // Stores master card's ID read from EEPROM
 
@@ -40,10 +41,10 @@ void setup() {
   mfrc522.PCD_Init();	// Init MFRC522 card
   Serial.println("Scan PICC to see UID and type..."); 
 
-  storedCard[0] = 0xB6;
-  storedCard[1] = 0x35;
-  storedCard[2] = 0x27;
-  storedCard[3] = 0x8D;
+  storedCard[0][0] = 0xB6;
+  storedCard[0][1] = 0x35;
+  storedCard[0][2] = 0x27;
+  storedCard[0][3] = 0x8D;
 } 
 
 
@@ -52,6 +53,16 @@ void setup() {
 */
 bool isClipClosed() {
   //TODO check the switch from a clip
+  return true;
+}
+
+
+bool compareTwoCards ( byte a[], byte b[] ) {
+  if ( a[0] != 0 )      // Make sure there is something in the array first
+  for ( uint8_t k = 0; k < 4; k++ ) {   // Loop 4 times
+    if ( a[k] != b[k] )     // IF a != b then set match = false, one fails, all fail
+      return false;
+  }
   return true;
 }
 
@@ -99,15 +110,15 @@ bool validateRFID() {
   if( !getID()) return false;
 
   //TODO write procedure to check that RFID is known
-  if(storedCard[0] == readCard[0] && storedCard[1] == readCard[1] && storedCard[2] == readCard[2] && storedCard[3] == readCard[3]) {
-    Serial.println("Correct Value."); 
-    //TODO sendRFID();
-    return true;
+  for(int i = 0; i < NUM_STORED_CARDS; i++) {
+    if(compareTwoCards(readCard, storedCard[i])) {
+      return true;
+      Serial.println("Known card."); 
+    }
   }
-  else {
-    Serial.println("Wrong value."); 
-    return false;
-  }
+  Serial.println("Unknown card."); 
+  return false;
+  
 
 }
 
