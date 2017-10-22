@@ -23,6 +23,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance.
 #define STATE_OPENED 0
 #define STATE_CLOSED 1
 #define STATE_OK 2
+#define STATE_WAITING 3
 
 
 int state = STATE_OPENED;
@@ -30,7 +31,7 @@ int previous_state = -1;
 
 #define NUM_STORED_CARDS 1
 
-#define DEBUG
+//#define DEBUG
 
 byte storedCard[NUM_STORED_CARDS][4];   // Stores an ID read from EEPROM
 byte readCard[4];   // Stores scanned ID read from RFID Module
@@ -42,8 +43,9 @@ CapacitiveSensor   cs_4_2 = CapacitiveSensor(4,2);        // 10M resistor betwee
 
 bool buzzer_on;
 elapsedMillis timeElapsed; 
+elapsedMillis contact_timeElapsed; 
 #define BUZZER_LENGTH 500
-
+#define CONTACT_LENGTH 100
 
 //card=0xB635278D
 //rfid =0xF0FF736
@@ -52,7 +54,9 @@ elapsedMillis timeElapsed;
 void setup() {                
   // initialize the digital pin as an output.
   // Pin 13 has an LED connected on most Arduino boards:
-  pinMode(8, OUTPUT);   
+  pinMode(PIN_RED, OUTPUT);  
+  pinMode(PIN_GREEN, OUTPUT);   
+  pinMode(PIN_BUZZER, OUTPUT);  
  
   Serial.begin(9600);  // Initialize serial communications with the PC
   SPI.begin();      // Init SPI bus
@@ -63,6 +67,7 @@ void setup() {
   storedCard[0][1] = 0x35;
   storedCard[0][2] = 0x27;
   storedCard[0][3] = 0x8D;
+
 } 
 
 
@@ -106,6 +111,9 @@ bool compareTwoCards ( byte a[], byte b[] ) {
 
 bool getID() {
   // Getting ready for Reading PICCs
+  #ifdef DEBUG
+  Serial.println("Trying to read card");
+  #endif
   if ( ! mfrc522.PICC_IsNewCardPresent()) { //If a new PICC placed to RFID reader continue
     return false;
   }
@@ -172,12 +180,13 @@ void turnOnBuzzer() {
 }
 
 void turnOffBuzzer() {
-  buzzer_on = off;
+  buzzer_on = false;
   turnOffDigitalPin(PIN_BUZZER);
 }
 
 void loop() {
-
+  
+  
   //after state change
   if (state != previous_state) {
     if(state == STATE_OK) {
@@ -192,19 +201,24 @@ void loop() {
       turnOnDigitalPin(PIN_RED);
       turnOffDigitalPin(PIN_GREEN);
     }
+    else if(state == STATE_WAITING) {
+      contact_timeElapsed = 0;
+    }
   }
 
   //check time elapse for buzzer
-  if(buzzer_on && timeElapse > BUZZER_LENGTH) {
+  if(buzzer_on && timeElapsed > BUZZER_LENGTH) {
     turnOffBuzzer();
   }
+
+
 
 
   //state machine
   previous_state = state;
   if(state == STATE_OK) {
     if( !isClipClosed() ) {
-      state = STATE_OPENED;
+      state = STATE_WAITING;
       return;
     }
 
@@ -220,17 +234,23 @@ void loop() {
     }
   }
   //opened state
-  else {
+  else if(state == STATE_OPENED) {
     if( isClipClosed() ) {
       state = STATE_CLOSED;
       return;
     }
     else return;
   }
+  else if( state == STATE_WAITING) {
+    if( isClipClosed() ) {
+      state = STATE_OK;
+    }
+    else if( contact_timeElapsed > CONTACT_LENGTH ) {
+      state = STATE_OPENED;
+    }
+  } 
   
 
 }
-
-
 
 
