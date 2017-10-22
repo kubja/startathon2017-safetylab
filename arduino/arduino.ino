@@ -1,3 +1,5 @@
+
+
 /*
 Team Safety Lab for PPE enforcement
 
@@ -5,12 +7,18 @@ Team Safety Lab for PPE enforcement
 
 #include <SPI.h>
 #include <MFRC522.h>
+#include "CapacitiveSensor.h"
+#include <elapsedMillis.h>
 
 
 // RFID reader config
 #define SS_PIN 10
 #define RST_PIN 9
 MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance.
+
+#define PIN_GREEN 7
+#define PIN_RED 8
+#define PIN_BUZZER 5
 
 #define STATE_OPENED 0
 #define STATE_CLOSED 1
@@ -22,9 +30,19 @@ int previous_state = -1;
 
 #define NUM_STORED_CARDS 1
 
+#define DEBUG
+
 byte storedCard[NUM_STORED_CARDS][4];   // Stores an ID read from EEPROM
 byte readCard[4];   // Stores scanned ID read from RFID Module
 byte masterCard[4];   // Stores master card's ID read from EEPROM
+
+
+
+CapacitiveSensor   cs_4_2 = CapacitiveSensor(4,2);        // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
+
+bool buzzer_on;
+elapsedMillis timeElapsed; 
+#define BUZZER_LENGTH 500
 
 
 //card=0xB635278D
@@ -53,7 +71,21 @@ void setup() {
 */
 bool isClipClosed() {
   //TODO check the switch from a clip
-  return true;
+
+  long total1 =  cs_4_2.capacitiveSensor(30);
+
+    if (total1 > 100){
+      #ifdef DEBUG
+        Serial.println("Touch"); 
+      #endif
+      return true;
+    }
+    else{
+      #ifdef DEBUG
+        Serial.println("No touch"); 
+      #endif
+      return false;
+    }
 }
 
 
@@ -80,6 +112,9 @@ bool getID() {
   if ( ! mfrc522.PICC_ReadCardSerial()) {   //Since a PICC placed get Serial and continue
     return false;
   }
+
+  turnOnBuzzer();
+
   // There are Mifare PICCs which have 4 byte or 7 byte UID care if you use 7 byte PICC
   // I think we should assume every PICC as they have 4 byte UID
   // Until we support 7 byte PICCs
@@ -96,10 +131,6 @@ bool getID() {
  
 }
 
-
-void sendRFID() {
-  //TODO
-}
 
 /*
 @brief validates RFID chip
@@ -123,12 +154,26 @@ bool validateRFID() {
 }
 
 
-void turnOnLight() {
-  digitalWrite(8, HIGH);    // set the LED off
+void turnOnDigitalPin(int pin) {
+  digitalWrite(pin, HIGH);    // set the LED off
 }
 
-void turnOffLight() {
-  digitalWrite(8, LOW);    // set the LED off
+void turnOffDigitalPin(int pin) {
+  digitalWrite(pin, LOW);    // set the LED off
+}
+
+
+
+
+void turnOnBuzzer() {
+  buzzer_on = true;
+  timeElapsed = 0;
+  turnOnDigitalPin(PIN_BUZZER);
+}
+
+void turnOffBuzzer() {
+  buzzer_on = off;
+  turnOffDigitalPin(PIN_BUZZER);
 }
 
 void loop() {
@@ -136,14 +181,22 @@ void loop() {
   //after state change
   if (state != previous_state) {
     if(state == STATE_OK) {
-      turnOffLight();
+      turnOnDigitalPin(PIN_GREEN);
+      turnOffDigitalPin(PIN_RED);
     }
     else if(state == STATE_OPENED) {
-      turnOnLight();
+      turnOnDigitalPin(PIN_RED);
+      turnOffDigitalPin(PIN_GREEN);
     }
     else if(state == STATE_CLOSED) {
-      turnOnLight();
+      turnOnDigitalPin(PIN_RED);
+      turnOffDigitalPin(PIN_GREEN);
     }
+  }
+
+  //check time elapse for buzzer
+  if(buzzer_on && timeElapse > BUZZER_LENGTH) {
+    turnOffBuzzer();
   }
 
 
@@ -177,6 +230,7 @@ void loop() {
   
 
 }
+
 
 
 
